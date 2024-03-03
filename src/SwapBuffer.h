@@ -1,4 +1,5 @@
 #pragma once
+#include <windows.h>
 
 #define SWAPBUFFER_COUNT 2
 
@@ -14,6 +15,8 @@ public:
   T* getReadBuffer();
   void finishRead();
 
+  void killThreads();
+
 private:
   void swapBuffers();
   T* buf[SWAPBUFFER_COUNT];    // buffers
@@ -21,6 +24,7 @@ private:
   int writeIdx;                // indice de escrita
   bool readEnable;             // liberado para leitura
   bool swapEnable;             // liberado para trocar buffers
+  bool killThread;             // avisa final das threads de escrita/leitura
   bool waitReadToSawpBuffers;  // agaurdar liberacao para  troca de buffers
 };
 
@@ -32,6 +36,7 @@ inline SwapBuffer<T>::SwapBuffer(bool waitReadToSawpBuffers) {
   this->waitReadToSawpBuffers = waitReadToSawpBuffers;
   for (int i = 0; i < SWAPBUFFER_COUNT; i++) buf[i] = new T();
   writeIdx = 0;
+  killThread = false;
   readEnable = false;
   swapEnable = true;
 }
@@ -49,8 +54,7 @@ inline T* SwapBuffer<T>::getWriteBuffer() {
 template <typename T>
 inline void SwapBuffer<T>::finishWrite() {
   if (waitReadToSawpBuffers) {
-    while (!swapEnable)
-      ;
+    while (!swapEnable && !killThread) Sleep(0);
     swapBuffers();
   } else {
     if (swapEnable) swapBuffers();
@@ -59,8 +63,7 @@ inline void SwapBuffer<T>::finishWrite() {
 
 template <typename T>
 inline T* SwapBuffer<T>::getReadBuffer() {
-  while (!readEnable)
-    ;
+  while (!readEnable && !killThread) Sleep(0);
   readEnable = false;
   return buf[readIdx];
 }
@@ -68,6 +71,11 @@ inline T* SwapBuffer<T>::getReadBuffer() {
 template <typename T>
 inline void SwapBuffer<T>::finishRead() {
   swapEnable = true;
+}
+
+template <typename T>
+inline void SwapBuffer<T>::killThreads() {
+  killThread = true;
 }
 
 template <typename T>
